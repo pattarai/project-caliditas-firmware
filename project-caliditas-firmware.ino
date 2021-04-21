@@ -11,12 +11,12 @@ int dev_id = 1;
 char *dev_pass = "licet";
 
 // Enter Wifi Credentials here
-const char *ssid = "Jesinthan";
-const char *wifiPassword = "311119104032";
+const char *ssid = "Phantom";
+const char *wifiPassword = "8754462663";
 
 // Your device API url to POST data
 // const char *serverName = "https://xstack-caliditas.herokuapp.com/api/device.php";
-const char *serverName = "https://04ae30f5d241.ngrok.io/xstack-thermometer/api/nodecheck.php";
+const char *serverName = "https://89fe95c88cc6.ngrok.io/api/nodecheck.php";
 
 // Initialize temperature module
 Adafruit_MLX90614 mlx = Adafruit_MLX90614();
@@ -25,8 +25,8 @@ Adafruit_MLX90614 mlx = Adafruit_MLX90614();
  RFID init starts here
 ===========================*/
 
-constexpr uint8_t RST_PIN = 5; // Configurable, see typical pin layout above
-constexpr uint8_t SS_PIN = 4;  // Configurable, see typical pin layout above
+constexpr uint8_t RST_PIN = 0; // Configurable, see typical pin layout above
+constexpr uint8_t SS_PIN = 2;  // Configurable, see typical pin layout above
 
 MFRC522 rfid(SS_PIN, RST_PIN); // Instance of the class
 
@@ -101,16 +101,17 @@ void loop()
   int register_no = getRegisterNo();
 
   bool status = xStackHubPost(dev_id, dev_pass, register_no, temperature);
-  Serial.println(status);
 
   // Post data to the API
   if (status)
   {
     Serial.print("SUCCESS");
+    Serial.println();
   }
   else
   {
     Serial.print("FAIL");
+    Serial.println();
   }
 }
 
@@ -118,8 +119,8 @@ bool xStackHubPost(int devId, char *devPass, int registerNo, float temp)
 {
   // For storing the params in the string
   char buffer[100];
-  // sprintf(buffer, "dev_id=%d&dev_pass=%s&register_no=%d&temperature=%f", devId, devPass, registerNo, temp);
-  sprintf(buffer, "id=%d", registerNo);
+  sprintf(buffer, "dev_id=%d&dev_pass=%s&register_no=%d&temperature=%f", devId, devPass, registerNo, temp);
+  // sprintf(buffer, "id=%d", registerNo);
 
   Serial.println(buffer);
 
@@ -139,11 +140,10 @@ bool xStackHubPost(int devId, char *devPass, int registerNo, float temp)
     
     // Data to send with HTTP POST
     int httpResponseCode = http.POST(buffer);
-
-    Serial.print(buffer);
+    Serial.println();
        
     Serial.println("HTTP Response code: ");
-    Serial.println(httpResponseCode);
+    Serial.print(httpResponseCode);
 
 
     // Free resources
