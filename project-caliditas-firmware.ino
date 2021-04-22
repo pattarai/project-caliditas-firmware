@@ -1,10 +1,13 @@
-#include <Adafruit_MLX90614.h>
 #include <ESP8266HTTPClient.h>
+#include <Adafruit_MLX90614.h>
 #include <ESP8266WiFi.h>
 #include <MFRC522.h>
 #include <SPI.h>
 #include <WiFiClient.h>
 #include <Wire.h>
+
+
+# define LED 16
 
 // Enter Device Credentials here
 int dev_id = 1;
@@ -15,9 +18,7 @@ const char *ssid = "Phantom";
 const char *wifiPassword = "8754462663";
 
 // Your device API url to POST data
-// const char *serverName =
-// "https://xstack-caliditas.herokuapp.com/api/device.php";
-const char *serverName = "https://89fe95c88cc6.ngrok.io/api/nodecheck.php";
+const char *serverName = "https://xstack-caliditas.herokuapp.com/api/device.php";
 
 // Initialize temperature module
 Adafruit_MLX90614 mlx = Adafruit_MLX90614();
@@ -26,8 +27,8 @@ Adafruit_MLX90614 mlx = Adafruit_MLX90614();
  RFID init starts here
 ===========================*/
 
-constexpr uint8_t RST_PIN = 0; // Configurable, see typical pin layout above
-constexpr uint8_t SS_PIN = 2;  // Configurable, see typical pin layout above
+constexpr uint8_t RST_PIN = 0; // D3 Configurable, see typical pin layout above
+constexpr uint8_t SS_PIN = 2;  // D4 Configurable, see typical pin layout above
 
 MFRC522 rfid(SS_PIN, RST_PIN); // Instance of the class
 
@@ -38,6 +39,10 @@ byte nuidPICC[4]; // Init array that will store new NUID
 /*===========================
  RFID init ends here
 ===========================*/
+
+
+  // Init HTTPclient
+  HTTPClient http;
 
 void setup() {
   // Set baud rate
@@ -96,31 +101,41 @@ void loop() {
   // Get registerNo from RFiD sensor
   int register_no = getRegisterNo();
 
-  bool status = xStackHubPost(dev_id, dev_pass, register_no, temperature);
+  if(register_no){
+    bool status = xStackHubPost(dev_id, dev_pass, register_no, temperature);
+    Serial.println();
 
-  // Post data to the API
-  if (status) {
-    Serial.print("SUCCESS");
-    Serial.println();
+    // Post data to the API
+    if (status) {
+      digitalWrite(LED, LOW);
+      Serial.print("SUCCESS");
+      Serial.println();
+    } else {
+      digitalWrite(LED, HIGH);
+      Serial.print("FAIL");
+      Serial.println();
+    }
   } else {
-    Serial.print("FAIL");
-    Serial.println();
+    return;
   }
 }
 
+
+/*
+ Main routine to post data to the REST api
+*/
 bool xStackHubPost(int devId, char *devPass, int registerNo, float temp) {
   // For storing the params in the string
   char buffer[100];
-  sprintf(buffer, "dev_id=%d&dev_pass=%s&register_no=%d&temperature=%f", devId,
-          devPass, registerNo, temp);
-  // sprintf(buffer, "id=%d", registerNo);
+  sprintf(buffer, "dev_id=%d&dev_pass=%s&register_no=%d&temperature=%f", devId, devPass, registerNo, temp);
 
+  Serial.print("PAYLOAD: ");
   Serial.println(buffer);
 
-  // Check WiFi connection status
-  if (WiFi.status() == WL_CONNECTED) {
-    HTTPClient http;
+  Serial.println();
 
+  // Check WiFi connection status
+  if (WiFi.status() == WL_CONNECTED) {    
     // Your Domain name with URL path or IP address with path
     http.begin(serverName);
 
@@ -131,8 +146,14 @@ bool xStackHubPost(int devId, char *devPass, int registerNo, float temp) {
     int httpResponseCode = http.POST(buffer);
     Serial.println();
 
-    Serial.println("HTTP Response code: ");
-    Serial.print(httpResponseCode);
+    Serial.print("HTTP Response code: ");
+    Serial.println(httpResponseCode);
+
+
+
+    Serial.print("HTTP RESPONSE: ");
+    Serial.println(http.getString());
+
 
     // Free resources
     http.end();
@@ -150,6 +171,10 @@ bool xStackHubPost(int devId, char *devPass, int registerNo, float temp) {
   }
 }
 
+
+/*
+ Main routine to return registerNo as int.
+*/
 int getRegisterNo() {
   int regNo;
   // Using RFID sensor
@@ -180,8 +205,11 @@ int getRegisterNo() {
     // Serial.print(F("In dec: "));
     regNo = printDec(rfid.uid.uidByte, rfid.uid.size);
     Serial.println();
-  } else
+  } else{
     Serial.println(F("Card read previously."));
+    return 0;
+  }
+    
 
   // Halt PICC
   rfid.PICC_HaltA();
@@ -210,14 +238,10 @@ int printDec(byte *buffer, byte bufferSize) {
   int digit = 1;
   String bigBuffer = "";
   for (byte i = 0; i < bufferSize; i++) {
-    // Serial.print(buffer[i] < 0x10 ? " 0" : " ");
-    // Serial.print(buffer[i], DEC);
-    String temp = String(buffer[i], DEC);
-    reg = reg + (temp.toInt()) * digit;
-    bigBuffer = bigBuffer + temp;
+    bigBuffer = String(buffer[i] < 0x10 ? " 0" : " ");
+    bigBuffer = bigBuffer + String(buffer[i], DEC);
+    reg = reg + (bigBuffer.toInt()) * digit;
     digit = digit * 10;
   }
-
-  return bigBuffer.toInt();
-  // return reg;
+  return reg;
 }
