@@ -41,8 +41,6 @@ byte nuidPICC[4]; // Init array that will store new NUID
 ===========================*/
 
 
-  // Init HTTPclient
-  HTTPClient http;
 
 void setup() {
   // Set baud rate
@@ -136,35 +134,41 @@ bool xStackHubPost(int devId, char *devPass, int registerNo, float temp) {
 
   // Check WiFi connection status
   if (WiFi.status() == WL_CONNECTED) {    
+    // Init HTTPclient
+    HTTPClient http;
+
     // Your Domain name with URL path or IP address with path
-    http.begin(serverName);
+    // http.begin(serverName);
+    http.begin("http://jsonplaceholder.typicode.com/users/1");
 
     // Specify content-type header
-    http.addHeader("Content-Type", "application/x-www-form-urlencoded");
+    // http.addHeader("Content-Type", "application/x-www-form-urlencoded");
 
     // Data to send with HTTP POST
-    int httpResponseCode = http.POST(buffer);
+    // int httpResponseCode = http.POST(buffer);
+    int httpResponseCode = http.GET();
     Serial.println();
 
     Serial.print("HTTP Response code: ");
     Serial.println(httpResponseCode);
 
 
+    if (httpResponseCode > 0) {
+      Serial.print("HTTP RESPONSE: ");
+      Serial.println(http.getString());
 
-    Serial.print("HTTP RESPONSE: ");
-    Serial.println(http.getString());
-
-
-    // Free resources
-    http.end();
-
-    if (httpResponseCode == -1) {
-      // POST REQUEST FAILED
-      return false;
-    } else {
       // POST REQUEST IS SENT
       return true;
+    } else {
+      Serial.print("HTTP RESPONSE: ");
+      Serial.println(http.getString());
+
+      // POST REQUEST FAILED
+      return false;
     }
+  
+    // Free resources
+    http.end();
   } else {
     Serial.println("WiFi Disconnected");
     return false;
